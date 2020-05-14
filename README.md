@@ -1,2 +1,2 @@
 # Bigdata_1508
-Big data project in insurance company in 2015
+Big data project at insurance company in 2015
