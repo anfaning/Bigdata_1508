@@ -1,27 +1,11 @@
  
 ---
-title: "WAVE2_CU2_EX15_RF: ±âÁ¸°í°´ °è¾à 15Â÷À¯ÁöÀ² ¿¹Ãø¸ğµ¨"
-author: "ABLE"
-date: "2016. 03. 18."
 output: word_document
 ---
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, results = 'hide'}
-###########################################################
-## ÇÁ·Î±×·¥¸í     : ±âÁ¸°í°´ °è¾à 15Â÷À¯ÁöÀ² ¿¹Ãø¸ğµ¨
-## ÇÁ·Î±×·¥¾ÆÀÌµğ : WAVE2_CU2_EX09_RF
-## ÀÛ¼ºÀÚ         : ABLE
-## ÀÛ¼ºÀÏÀÚ       : 2016-03-18
-## ÇÁ·Î±×·¥¼³¸í   : ±âÁ¸°í°´ ½Å°è¾àÀÇ 15Â÷À¯ÁöÀ² ¿¹ÃøÀ» À§ÇÑ
-##                  Random Forest ¸ğµ¨
-## Input Å×ÀÌºí   : HAMADMIN.AB_CU2_NCT_EX_TRN15_DS
-##                  HAMADMIN.AB_CU2_NCT_EX_TST15_DS
-## Output Image   : Classfication model 
-## »ç¿ëÆĞÅ°Áö     : hliR, caret, DMwR, knitr, data.table µî
-## ¼öÁ¤»çÇ×       : 
-## 2016-03/ABLE/ÀÛ¼º
-###########################################################
+
 ## ==================================================================
-## 0. ÆĞÅ°Áö ·Îµù
+## 0. Loading packages
 ## ==================================================================
 rm(list=ls())
 library(data.table)
@@ -36,10 +20,10 @@ library(ROCR)
 library(SDMTools)
 oraConnect()
 ## ==================================================================
-## 1. µ¥ÀÌÅÍ ÁØºñ
+## 1. Data preparation 
 ## ==================================================================
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 1.1. µ¥ÀÌÅÍ ±¸¼º
+## 1.1. Data component
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 CU.TRN <- oraSql("SELECT *
                         FROM HAMADMIN.AB_CU2_NCT_EX_TRN15_DS")
@@ -48,7 +32,7 @@ CU.TST <- oraSql("SELECT *
 CU.TRN$TGT <- as.factor(CU.TRN$TGT15)
 CU.TST$TGT <- as.factor(CU.TST$TGT15)
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 1.2. µ¥ÀÌÅÍ º¯È¯
+## 1.2. Data transition
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class              <- sapply(CU.TRN, class)
 char.list          <- subset(class, class == "character")
@@ -91,9 +75,9 @@ for (colname in out$out_var) {
 # a <- sapply(CU.TRN, function(x){sum(is.na(x))})
 # a[a>0]
 ```
-## Random Forest ¸ğÇü
-### Target: °í°´ º¸À¯°è¾à ÀÌÅ»¿©ºÎ
-#### 2. ¸ğµ¨°³¹ß
+## Random Forest 
+### Target: ê³ ê° ë³´ìœ ê³„ì•½ ì´íƒˆì—¬ë¶€
+#### 2. ëª¨ë¸ê°œë°œ
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
 set.seed(100)
 options(contrasts = c("contr.treatment", "contr.poly"))
@@ -111,7 +95,7 @@ a <- varImpPlot(RF_OBJ, cex = 0.7, main = "Variable Importance")
 kable(a[order(-a[,"MeanDecreaseAccuracy"]),])
 
 ```
-#### 3. Æò°¡ 
+#### 3. í‰ê°€ 
 ##### 3.1. confusion matrix 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
 ##train
