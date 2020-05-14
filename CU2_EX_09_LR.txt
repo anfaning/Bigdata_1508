@@ -1,0 +1,193 @@
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results = 'hide'}
+###########################################################
+## 프로그램명     : 기존고객 계약 9차유지율 예측모델
+## 프로그램아이디 : WAVE2_CU_LR
+## 작성자         : ABLE
+## 작성일자       : 2016-03-22
+## 프로그램설명   : 기존고객 계약 9차유지율 예측을 위한
+##                  Logistic Regression 모델
+## Input 테이블   : HAMADMIN.AB_CU2_NCT_EX_TRN09_DS
+##                  HAMADMIN.AB_CU2_NCT_EX_TST09_DS
+## Output Image   : Classfication model 
+## 사용패키지     : hliR, caret, DMwR, knitr, data.table 등
+## 수정사항       : 
+## 2016-03/ABLE/작성
+###########################################################
+
+## ==================================================================
+## 0. 패키지 로딩
+## ==================================================================
+rm(list=ls())
+library(data.table)
+library(DMwR)
+library(Epi)
+library(ggplot2)
+library(hliR)
+library(knitr)
+library(logistf)
+library(QuantPsyc)
+library(ROCR)
+library(SDMTools)
+library(lm.beta)
+oraConnect()
+## ==================================================================
+## 1. 데이터 준비
+## ==================================================================
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## 1.1. 데이터 구성
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cu2.trn <- oraSql("select * from HAMADMIN.AB_CU2_NCT_EX_TRN09_DS")
+cu2.tst <- oraSql("select * from HAMADMIN.AB_CU2_NCT_EX_TST09_DS")
+cu2.trn$TGT <- as.numeric(cu2.trn$TGT09)
+cu2.tst$TGT <- as.numeric(cu2.tst$TGT09)
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## 1.3. 데이터 변환
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+logvar  <- c("RM_PAYM_CNT_SUM", "AVG_PAYM_CNT", "CLLT_CVMF_CNTT", "ARRE_AVG_AMT_1Y",
+             "CRNT_LOAN_AMT", "PL_MPREM_RATIO", "DS_MPREM_RATIO", "PAYM_AMT",
+             "PUBL_SHTS", "CNTT_INTV", "AVG_TRNF_FL_AMT_1Y", "DS_MAX_MPREM_RATIO",
+             "SMPD_SLL_EXP", "CY_MINCM", "VAL_PLCNT_COLL", "DS_TS_MPREM_RATIO","XY_VAL_DIFF")
+cu2.trn[, logvar] <- lapply(cu2.trn[, logvar] + 1, log)
+cu2.tst[, logvar] <- lapply(cu2.tst[, logvar] + 1, log)
+class              <- sapply(cu2.trn, class)
+char.list          <- subset(class, class == "character")
+char.name          <- names(char.list)
+coldelete          <- c("POLY_NO",  "CTOR_CUST_ID","CLLT_FP_PRNO", "CNTT_DATE", "CNTT_YM")
+char.name1         <- char.name[! char.name %in% coldelete]
+cu2.trn[, char.name1] <- lapply(char.name1, function(x){
+  lev <- unique(c(levels(factor(cu2.trn[, x])),
+                    levels(factor(cu2.tst[, x])) ))
+  lev.ord <- lev[order(lev)]
+  factor(cu2.trn[, x], levels = lev.ord)
+  })
+cu2.tst[, char.name1] <- lapply(char.name1, function(x){
+  lev <- unique(c(levels(factor(cu2.trn[, x])),
+                    levels(factor(cu2.tst[, x])) ))
+  lev.ord <- lev[order(lev)]
+  factor(cu2.tst[, x], levels = lev.ord)
+  })
+```
+## 로지스틱 회귀모형
+### Target: 고객 보유계약 이탈여부
+#### 2. 모델개발: glm
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results = 'hide'}
+##cu2.object <- step(glm(TGT ~ CTOR_AGE + MACRM_CLSF_CDNM + SRDO_RECP_TIME_GR + CNTT_WKSQ + FTPR_RECV_MDCD_82_YN + MINS_CUST_SF_YN + FP_RLCD + FST_FP_CNTT_YN + RCT_LAPS_MAFT + LAPS_CNT_3Y + AVG_PAYM_CNT + MFPAY_CNT_3Y + CLLT_CVMF_CNTT + CLLT_MMTH_CNTT + MNTN_PREM_MM13_GRAC + SP_YN + LST_CHLD_AGE_GR + ARRE_PAYD_PMCNT_1Y + ARRE_NPAYD_PMCNT_1Y + ARRE_NPAYD_MAFT_1Y + PALN_DTCNT_3Y + ALL_ARRE_YN_1Y + RFPAY_CNT_1Y + TS_NT_MNTN_CNT + CD_GRAD_GR + PL_MPREM_RATIO + PAYM_MAFT_3Y + PUBL_DTCNT_GR + PUBL_YN + CLLT_CHNG_CNT_3Y + RGST_CNTT_MAFT + CNTT_INTV + ALL_REDU_CNT + SPCT_PCT_RNK + UPDT_YN + DS_MIN_MPREM_RATIO + MAX_MFRT_AFFRD_2Y + PREM_PCT + CY_MINCM + VAL_PLCNT + CNTT_CLLT_AGE_DIFF + CNTT_CLLT_SEX_DIFF_YN + MX_DGRE + ERC_0001 + RESI_TYPE_CODE + XY_VAL_DIFF,
+                       
+##family = binomial, data = cu2.trn), direction="both")
+```
+```{r, echo = FALSE, warning = FALSE, message = TRUE}
+##cu2.object.m1 <- glm(cu2.object$formula, family = binomial, data = cu2.trn)
+cu2.object.m1 <- glm(TGT ~ MACRM_CLSF_CDNM + SRDO_LDDT + SRDO_RECP_TIME_GR + CNTT_WKSQ + FTPR_RECV_MDCD_82_YN + MINS_CUST_SF_YN + FP_RLCD + RCT_LAPS_MAFT + AVG_PAYM_CNT + CLLT_CVMF_CNTT + MNTN_PREM_MM13_GRAC + SP_YN + LST_CHLD_AGE_GR + ARRE_NPAYD_MAFT_1Y + PALN_DTCNT_3Y + TS_NT_MNTN_CNT + CD_GRAD_GR + PL_MPREM_RATIO + PUBL_DTCNT + PUBL_DTCNT_GR + RGST_CNTT_MAFT + CNTT_INTV + ALL_REDU_CNT + SPCT_PCT_RNK + UPDT_YN + DS_MIN_MPREM_RATIO + CNTT_MFRT_AFFRD_2Y + SMPD_SLL_EXP_GR + VAL_PLCNT + VAL_PLCNT_COLL + CNTT_CLLT_AGE_DIFF + CNTT_CLLT_SEX_DIFF_YN + CALL_CNT + MX_DGRE + ERC_0001 + RESI_TYPE_CODE, family = binomial, data = cu2.trn)
+print(cu2.object.m1$formula)
+summary(cu2.object.m1)
+str(cu2.object.m1$model[-1])
+summary(cu2.object.m1)$coef[-1, 1]
+```
+##### 2.1. odds ratio 계산
+```{r, echo = FALSE, warning = FALSE, message = TRUE}
+print((exp(coef(cu2.object.m1))))
+```
+##### 2.2. 표준화회귀계수
+```{r, echo = FALSE, warning = FALSE, message = TRUE}
+beta <- lm.beta::lm.beta(cu2.object.m1)
+beta2 <- data.frame(standardized.coefficients = beta$standardized.coefficients,
+                    row.names = names(beta$standardized.coefficients))
+kable(beta2)
+coef  <- cu2.object.m1$coefficients
+coef2 <- data.frame(cbind(names(coef), as.numeric(coef)))
+colnames(coef2) <- c('VarName', 'Coef')
+```
+ 
+##### 2.3. VIF(variance inflation factor)
+```{r, echo = FALSE, warning = FALSE, message = TRUE}
+VIF <- hliR::vif(cu2.object.m1)
+knitr::kable(as.data.frame(VIF))
+```
+#### 3. Prediction
+```{r, echo = FALSE, warning = FALSE, message = TRUE}
+pred    <- predict(cu2.object.m1, cu2.trn, type = "response")
+logodds <- predict(cu2.object.m1, cu2.trn)
+cu2.trn <- cbind(cu2.trn, pred) #확률
+cu2.trn <- cbind(cu2.trn, logodds) #오즈
+pred    <- predict(cu2.object.m1, cu2.tst, type = "response")
+logodds <- predict(cu2.object.m1, cu2.tst)
+cu2.tst <- cbind(cu2.tst, pred) #확률
+cu2.tst <- cbind(cu2.tst, logodds) #오즈
+```
+#### 4. 평가 
+##### 4.1. Confusion Matrix 
+```{r, echo = FALSE, warning = FALSE, message = TRUE}
+mat  <- confusion.matrix(cu2.trn$TGT, cu2.trn$pred, threshold = 0.5)
+cfml <- matrix(confusion.matrix(cu2.trn$TGT, cu2.trn$pred, threshold = 0.5),
+               2:2, dimnames = list(c('0:Predicted False', '1:Predicted True'),
+                                    c("0:False", "1:True")))
+col      <- cfml[, 1] + cfml[, 2]
+cfml1    <- data.frame(cbind(cfml, col))
+cfml2    <- sapply(cfml1[, 1:3], sum)
+cfml3    <- as.matrix(rbind(cfml1, cfml2))
+colnames(cfml3) <- c("0:False", "1:True", "Total")
+rownames(cfml3) <- c("0:Predicted False", "1:Predicted True", "Total")
+kable(cfml3)
+knitr::kable(accuracy(cu2.trn$TGT, cu2.trn$pred, threshold = 0.5))
+accuracy_trn  <- ((cfml[1,1] + cfml[2,2]) / nrow(cu2.trn)) * 100 
+precision <- cfml[2,2] / (cfml[2,1] + cfml[2,2]) * 100
+recall    <- cfml[2,2] / (cfml[1,2] + cfml[2,2]) * 100
+f1        <- round((precision * recall) / (precision + recall), 4) * 2
+kable(cbind(accuracy_trn , precision, recall, f1))
+rm(cfml, accuracy_trn, precision, recall)
+mat  <- confusion.matrix(cu2.tst$TGT, cu2.tst$pred, threshold = 0.5)
+cfml <- matrix(confusion.matrix(cu2.tst$TGT, cu2.tst$pred, threshold = 0.5),
+               2:2, dimnames = list(c('0:Predicted False', '1:Predicted True'),
+                                    c("0: False", "1: True")))
+col      <- cfml[, 1] + cfml[, 2]
+cfml1    <- data.frame(cbind(cfml, col))
+cfml2    <- sapply(cfml1[, 1:3], sum)
+cfml3    <- as.matrix(rbind(cfml1, cfml2))
+colnames(cfml3) <- c("0:False", "1:True", "Total")
+rownames(cfml3) <- c("0:Predicted False", "1:Predicted True", "Total")
+kable(cfml3)
+knitr::kable(accuracy(cu2.tst$TGT, cu2.tst$pred, threshold = 0.5))
+accuracy_tst  <- ((cfml[1,1] + cfml[2,2]) / nrow(cu2.tst)) * 100 
+precision <- cfml[2,2] / (cfml[2,1] + cfml[2,2]) * 100
+recall    <- cfml[2,2] / (cfml[1,2] + cfml[2,2]) * 100
+f1        <- round((precision * recall) / (precision + recall), 4) * 2
+kable(cbind(accuracy_tst , precision, recall, f1))
+rm(cfml, accuracy_tst, precision, recall)
+
+```
+##### 4.2. Density Plot
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+actually <- factor(cu2.tst$TGT)
+dframe   <- data.frame(actually, 
+                       predicted = predict(cu2.object.m1, cu2.tst, type = "response"))
+ggplot(dframe, aes(x = predicted, colour = actually)) + geom_density()
+```
+##### 4.3. Gain Chart
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+cu2.tst1 <- cu2.tst    
+cu2.tst$pred <- predict(cu2.object.m1, cu2.tst, type = "response")
+cu2.tst      <- cu2.tst[with(cu2.tst, order(-cu2.tst$pred)), ]
+cu2.tst$ID  <- seq.int(nrow(cu2.tst))
+cu2.tst$Seg <- with(cu2.tst, cut(ID, breaks = quantile(ID, probs = seq(0, 1, by = 0.1)), 
+                                             labels = FALSE, include.lowest = TRUE))
+cu2.tst.dt  <- data.table(cu2.tst)
+gain.set <- cu2.tst.dt[, list(min_score = round(min(pred), 4),
+                                    max_score = round(max(pred), 4),
+                                    cnt       = length(pred),
+                                    Resp      = sum(ifelse(TGT == '1', 1, 0))),
+                             by = Seg]
+gain.set$Resp_rate <- round((gain.set$Resp / gain.set$cnt) * 100, 1)
+gain.set <- within(gain.set, cum_Resp <- cumsum(Resp))
+gain.set$cum_Resp_rate <- round((gain.set$cum_Resp / sum(gain.set$Resp)) * 100, 1)
+gain.set$lift <- round((gain.set$Resp_rate / 100) / (sum(gain.set$Resp) / sum(gain.set$cnt)), 1)
+print(gain.set, row.names = F)
+ggplot(data = gain.set, aes(x = Seg, y = cum_Resp_rate, group = 1)) + 
+  geom_line(colour = "blue", linetype = "solid", size = 1) +
+  geom_point(colour = "blue", size = 5, shape = 21,  fill = "white") + 
+  labs(title = "Gain Chart", x = "% customer", y = "% responser", color = "Cylinders") +
+  scale_x_continuous(breaks = 1:10) +
+  scale_y_continuous(breaks = c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)) +
+  theme(axis.text = element_text(size = 14))
+```
+ 
