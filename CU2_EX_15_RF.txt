@@ -1,27 +1,11 @@
  
 ---
-title: "WAVE2_CU2_EX15_RF: 기존고객 계약 15차유지율 예측모델"
-author: "ABLE"
-date: "2016. 03. 18."
+title: "WAVE2_CU2_EX15_RF: Exsting customer contract predictive model"
 output: word_document
 ---
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, results = 'hide'}
-###########################################################
-## 프로그램명     : 기존고객 계약 15차유지율 예측모델
-## 프로그램아이디 : WAVE2_CU2_EX09_RF
-## 작성자         : ABLE
-## 작성일자       : 2016-03-18
-## 프로그램설명   : 기존고객 신계약의 15차유지율 예측을 위한
-##                  Random Forest 모델
-## Input 테이블   : HAMADMIN.AB_CU2_NCT_EX_TRN15_DS
-##                  HAMADMIN.AB_CU2_NCT_EX_TST15_DS
-## Output Image   : Classfication model 
-## 사용패키지     : hliR, caret, DMwR, knitr, data.table 등
-## 수정사항       : 
-## 2016-03/ABLE/작성
-###########################################################
 ## ==================================================================
-## 0. 패키지 로딩
+## 0. Loading packages
 ## ==================================================================
 rm(list=ls())
 library(data.table)
@@ -36,10 +20,10 @@ library(ROCR)
 library(SDMTools)
 oraConnect()
 ## ==================================================================
-## 1. 데이터 준비
+## 1. Data prep
 ## ==================================================================
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 1.1. 데이터 구성
+## 1.1. Loading the data
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 CU.TRN <- oraSql("SELECT *
                         FROM HAMADMIN.AB_CU2_NCT_EX_TRN15_DS")
@@ -48,7 +32,7 @@ CU.TST <- oraSql("SELECT *
 CU.TRN$TGT <- as.factor(CU.TRN$TGT15)
 CU.TST$TGT <- as.factor(CU.TST$TGT15)
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 1.2. 데이터 변환
+## 1.2. Data transition
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class              <- sapply(CU.TRN, class)
 char.list          <- subset(class, class == "character")
@@ -91,9 +75,9 @@ for (colname in out$out_var) {
 # a <- sapply(CU.TRN, function(x){sum(is.na(x))})
 # a[a>0]
 ```
-## Random Forest 모형
-### Target: 고객 보유계약 이탈여부
-#### 2. 모델개발
+## Random Forest Model
+### Target: Customer chung model
+#### 2. Model
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
 set.seed(100)
 options(contrasts = c("contr.treatment", "contr.poly"))
@@ -111,7 +95,7 @@ a <- varImpPlot(RF_OBJ, cex = 0.7, main = "Variable Importance")
 kable(a[order(-a[,"MeanDecreaseAccuracy"]),])
 
 ```
-#### 3. 평가 
+#### 3. Vaildation
 ##### 3.1. confusion matrix 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
 ##train
